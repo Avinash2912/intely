@@ -1,5 +1,5 @@
 const pdfParse = require("pdf-parse")
-const { generateInterviewReport, generateResumePdf } = require("../services/ai.service")
+const { generateInterviewReport, generateResumePdf, generateMoreQuestions } = require("../services/ai.service")
 const interviewReportModel = require("../models/interviewReport.model")
 
 
@@ -95,4 +95,47 @@ async function generateResumePdfController(req, res) {
     res.send(pdfBuffer)
 }
 
-module.exports = { generateInterViewReportController, getInterviewReportByIdController, getAllInterviewReportsController, generateResumePdfController }
+/**
+ * @description Controller to generate more questions for an existing interview report.
+ */
+async function generateMoreQuestionsController(req, res) {
+    const { interviewReportId } = req.params
+    const { questionType } = req.body // 'technical' or 'behavioral'
+
+    const interviewReport = await interviewReportModel.findOne({ _id: interviewReportId, user: req.user.id })
+
+    if (!interviewReport) {
+        return res.status(404).json({
+            message: "Interview report not found."
+        })
+    }
+
+    const { resume, jobDescription, selfDescription, technicalQuestions, behavioralQuestions } = interviewReport
+
+    const existingQuestions = questionType === 'technical' ? technicalQuestions : behavioralQuestions
+
+    const newQuestions = await generateMoreQuestions({
+        resume,
+        jobDescription,
+        selfDescription,
+        existingQuestions,
+        questionType
+    })
+
+    // Add the new questions to the existing ones
+    if (questionType === 'technical') {
+        interviewReport.technicalQuestions = [...technicalQuestions, ...newQuestions]
+    } else {
+        interviewReport.behavioralQuestions = [...behavioralQuestions, ...newQuestions]
+    }
+
+    await interviewReport.save()
+
+    res.status(200).json({
+        message: "More questions generated successfully.",
+        newQuestions,
+        interviewReport
+    })
+}
+
+module.exports = { generateInterViewReportController, getInterviewReportByIdController, getAllInterviewReportsController, generateResumePdfController, generateMoreQuestionsController }

@@ -113,4 +113,34 @@ async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
 }
 
-module.exports = { generateInterviewReport, generateResumePdf }
+async function generateMoreQuestions({ resume, selfDescription, jobDescription, existingQuestions, questionType }) {
+    const questionsSchema = z.array(z.object({
+        question: z.string().describe(`The ${questionType} question that can be asked in the interview`),
+        intention: z.string().describe("The intention of interviewer behind asking this question"),
+        answer: z.string().describe("How to answer this question, what points to cover, what approach to take etc.")
+    }))
+
+    const prompt = `Generate 5 additional ${questionType} interview questions for a candidate with the following details:
+                        Resume: ${resume}
+                        Self Description: ${selfDescription}
+                        Job Description: ${jobDescription}
+                        
+                        Existing questions that have already been generated:
+                        ${JSON.stringify(existingQuestions)}
+                        
+                        Generate new questions that are different from the existing ones and provide more comprehensive coverage of the ${questionType} aspects relevant to this role.
+`
+
+    const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: zodToJsonSchema(questionsSchema),
+        }
+    })
+
+    return JSON.parse(response.text)
+}
+
+module.exports = { generateInterviewReport, generateResumePdf, generateMoreQuestions }

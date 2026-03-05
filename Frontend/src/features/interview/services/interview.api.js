@@ -57,3 +57,12 @@ export const generateResumePdf = async ({ interviewReportId }) => {
 
     return response.data
 }
+
+/**
+ * @description Service to generate more questions for an existing interview report.
+ */
+export const generateMoreQuestions = async ({ interviewReportId, questionType }) => {
+    const response = await api.post(`/api/interview/questions/${interviewReportId}`, { questionType })
+
+    return response.data
+}
